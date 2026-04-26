@@ -1,0 +1,148 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f0f4f8;
+  --foreground: #1a1a2e;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: #c0a0e0;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #a070c0;
+}
+
+/* Tab buttons */
+[role="tablist"] button {
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #6b7280;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+[role="tablist"] button:hover {
+  background: rgba(139, 92, 246, 0.1);
+  color: #7c3aed;
+}
+
+[role="tablist"] button[aria-selected="true"] {
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  color: white;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+}
+
+html.dark-mode body {
+  background: #0f172a;
+  color: #e2e8f0;
+}
+
+.user-pill-name,
+.theme-toggle-label,
+.sr-label,
+.theme-toggle-btn {
+  color: #0f172a;
+}
+
+html.dark-mode .app-shell {
+  background: linear-gradient(135deg, #0f172a, #1e293b, #111827);
+}
+
+html.dark-mode .app-header {
+  background: linear-gradient(90deg, #0b1220, #1e293b, #334155);
+  color: #e2e8f0;
+}
+
+html.dark-mode .app-tabs-list {
+  background: #111827;
+  border: 1px solid #374151;
+}
+
+html.dark-mode .app-tabs-list [role="tab"] {
+  color: #cbd5e1;
+}
+
+html.dark-mode .app-tabs-list [role="tab"]:hover {
+  color: #93c5fd;
+  background: rgba(59, 130, 246, 0.2);
+}
+
+html.dark-mode .theme-toggle-btn,
+html.dark-mode .screen-reader-controls {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.4);
+}
+
+html.dark-mode .user-pill-name,
+html.dark-mode .theme-toggle-label,
+html.dark-mode .sr-label,
+html.dark-mode .theme-toggle-btn {
+  color: #e2e8f0;
+}
+
+html.dark-mode .sr-btn,
+html.dark-mode .sr-speed,
+html.dark-mode .theme-toggle-btn {
+  color: #e2e8f0;
+}
+
+html.dark-mode .sr-btn,
+html.dark-mode .sr-speed {
+  background: #1e293b;
+}
+
+html.dark-mode .sr-btn:hover,
+html.dark-mode .theme-toggle-btn:hover {
+  background: #334155;
+}
+
+html.dark-mode .app-signout-btn {
+  background: #b91c1c;
+}
+
+html.dark-mode .app-signout-btn:hover {
+  background: #991b1b;
+}
+
+html.dark-mode ::-webkit-scrollbar-track {
+  background: #1f2937;
+}
+
+html.dark-mode ::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+
+html.dark-mode ::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+

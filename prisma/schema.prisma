@@ -1,0 +1,97 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id        String     @id @default(cuid())
+  name      String
+  email     String     @unique
+  password  String
+  avatar    String?
+  role      String     @default("resident") // resident, admin
+  dormId    String
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  // Relations
+  messages  Message[]
+  votes     Vote[]
+  proposals Proposal[] @relation("initiator")
+}
+
+model Room {
+  id        String     @id @default(cuid())
+  name      String
+  dormId    String
+  maxMembers Int
+  createdAt DateTime   @default(now())
+
+  // Relations
+  members   Message[]  @relation("room")
+}
+
+model Message {
+  id        String     @id @default(cuid())
+  content   String
+  authorId  String
+  author    User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  isPrivate Boolean    @default(false)
+  recipientId String?
+  roomId    String?
+  room      Room?      @relation("room", fields: [roomId], references: [id], onDelete: Cascade)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@index([authorId])
+  @@index([roomId])
+  @@index([recipientId])
+}
+
+model Proposal {
+  id          String     @id @default(cuid())
+  title       String
+  description String
+  type        String     // cleaning, visitor, quiet-hours
+  initiatorId String
+  initiator   User       @relation("initiator", fields: [initiatorId], references: [id], onDelete: Cascade)
+  status      String     @default("active") // active, approved, rejected, modified
+  content     String     // JSON stringified content for proposal details
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Relations
+  votes       Vote[]
+}
+
+model Vote {
+  id         String     @id @default(cuid())
+  proposalId String
+  proposal   Proposal   @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  voteType   String     // approve, reject, modify
+  comment    String?
+  createdAt  DateTime   @default(now())
+
+  @@unique([proposalId, userId])
+  @@index([userId])
+}
+
+model Notification {
+  id        String     @id @default(cuid())
+  userId    String
+  type      String     // message, proposal, vote
+  title     String
+  content   String
+  isRead    Boolean    @default(false)
+  relatedId String?    // proposalId or messageId
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}

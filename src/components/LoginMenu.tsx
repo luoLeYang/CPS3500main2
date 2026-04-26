@@ -64,7 +64,7 @@ export default function LoginMenu({ onLoginSuccess }: LoginMenuProps) {
     setSuccessMessage('');
 
     if (newPassword !== confirmNewPassword) {
-      setError('两次输入的新密码不一致');
+      setError('The two new passwords do not match');
       return;
     }
 
@@ -84,11 +84,11 @@ export default function LoginMenu({ onLoginSuccess }: LoginMenuProps) {
 
       const data = await response.json();
       if (!response.ok) {
-        setError(data.error || '重置密码失败');
+        setError(data.error || 'Password reset failed');
         return;
       }
 
-      setSuccessMessage('密码重置成功，请使用新密码登录');
+      setSuccessMessage('Password reset successful. Please sign in with your new password.');
       setMode('signin');
       setPassword('');
       setNewPassword('');
@@ -197,13 +197,13 @@ export default function LoginMenu({ onLoginSuccess }: LoginMenuProps) {
               <div>
                 <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
                   <Lock size={18} />
-                  密保问题答案（统一为 123）
+                  Security Answer (use 123)
                 </label>
                 <input
                   type="password"
                   value={securityAnswer}
                   onChange={(e) => setSecurityAnswer(e.target.value)}
-                  placeholder="请输入密保答案"
+                  placeholder="Enter security answer (123)"
                   className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none transition"
                   required
                 />

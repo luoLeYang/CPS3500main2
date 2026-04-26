@@ -11,7 +11,8 @@ export default function ChatPanel({ currentUser }: ChatPanelProps) {
   const [messages, setMessages] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [selectedUser, setSelectedUser] = useState<any>(null);
-  const [isGroupChat, setIsGroupChat] = useState(true);
+  const isAdmin = currentUser?.role === 'employee_admin';
+  const [isGroupChat, setIsGroupChat] = useState(!isAdmin);
   const [messageInput, setMessageInput] = useState('');
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -24,6 +25,12 @@ export default function ChatPanel({ currentUser }: ChatPanelProps) {
   useEffect(() => {
     fetchUsers();
   }, []);
+
+  useEffect(() => {
+    if (isAdmin) {
+      setIsGroupChat(false);
+    }
+  }, [isAdmin]);
 
   // Reset scroll state and messages when switching chats
   useEffect(() => {
@@ -61,7 +68,19 @@ export default function ChatPanel({ currentUser }: ChatPanelProps) {
     try {
       const res = await fetch('/api/users');
       const data = await res.json();
-      setUsers(data.filter((u: any) => u.id !== currentUser.id));
+      const filtered = (Array.isArray(data) ? data : []).filter((u: any) => {
+        if (u.id === currentUser.id) return false;
+        if (isAdmin) return u.role === 'resident';
+        return u.role === 'resident' || u.role === 'employee_admin';
+      });
+
+      setUsers(filtered);
+
+      // Admin can only use private chat, so auto-select a student when possible.
+      if (isAdmin && !selectedUser && filtered.length > 0) {
+        setSelectedUser(filtered[0]);
+        setIsGroupChat(false);
+      }
     } catch (error) {
       console.error('Failed to fetch users:', error);
     }
@@ -71,7 +90,11 @@ export default function ChatPanel({ currentUser }: ChatPanelProps) {
     try {
       let data: any[];
       if (isGroupChat) {
-        const res = await fetch('/api/messages?roomId=group');
+        if (isAdmin) {
+          setMessages([]);
+          return;
+        }
+        const res = await fetch(`/api/messages?roomId=group&userId=${currentUser.id}`);
         data = await res.json();
       } else if (selectedUser) {
         const res = await fetch(
@@ -126,25 +149,29 @@ export default function ChatPanel({ currentUser }: ChatPanelProps) {
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[600px]">
       {/* Users Sidebar */}
       <div className="lg:col-span-1 bg-white rounded-2xl shadow-lg p-4 overflow-y-auto">
-        <div className="mb-4">
-          <button
-            onClick={() => {
-              setIsGroupChat(true);
-              setSelectedUser(null);
-            }}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition ${
-              isGroupChat
-                ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            <Users size={20} />
-            <span className="font-semibold">Group Chat</span>
-          </button>
-        </div>
+        {!isAdmin && (
+          <div className="mb-4">
+            <button
+              onClick={() => {
+                setIsGroupChat(true);
+                setSelectedUser(null);
+              }}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition ${
+                isGroupChat
+                  ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <Users size={20} />
+              <span className="font-semibold">Group Chat</span>
+            </button>
+          </div>
+        )}
 
         <div>
-          <p className="text-sm font-semibold text-gray-600 mb-3">Direct Messages</p>
+          <p className="text-sm font-semibold text-gray-600 mb-3">
+            {isAdmin ? 'Student Direct Messages' : 'Direct Messages'}
+          </p>
           <div className="space-y-2">
             {users.map((user) => (
               <button

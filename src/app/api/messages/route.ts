@@ -6,6 +6,7 @@ export async function GET(request: NextRequest) {
   try {
     const url = new URL(request.url);
     const roomId = url.searchParams.get('roomId');
+    const viewerRole = url.searchParams.get('viewerRole');
     const recipientId = url.searchParams.get('recipientId');
     const userId = url.searchParams.get('userId');
     const db = await getDb();
@@ -13,6 +14,9 @@ export async function GET(request: NextRequest) {
     let messages: any[] = [];
 
     if (roomId) {
+      if (roomId === 'group' && viewerRole === 'employee_admin') {
+        return NextResponse.json([]);
+      }
       messages = mapDocs(await db.collection('messages').find({ roomId }).sort({ createdAt: -1 }).limit(50).toArray());
     } else if (recipientId && userId) {
       messages = mapDocs(await db.collection('messages').find({
@@ -41,6 +45,13 @@ export async function POST(request: NextRequest) {
     const { content, authorId, isPrivate, recipientId, roomId } = await request.json();
     const messageId = randomUUID();
     const db = await getDb();
+
+    if (roomId === 'group') {
+      const author = await db.collection('users').findOne({ _id: authorId });
+      if ((author as any)?.role === 'employee_admin') {
+        return NextResponse.json({ error: 'Admin users cannot access group chat' }, { status: 403 });
+      }
+    }
 
     await db.collection('messages').insertOne({
       _id: messageId,

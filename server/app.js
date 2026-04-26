@@ -166,6 +166,13 @@ function createApp({ getDb, handle, fetchImpl = fetch, logError = console.error 
       let messages = [];
 
       if (roomId) {
+        if (roomId === 'group' && userId) {
+          const viewer = await db.collection('users').findOne({ _id: userId });
+          if (viewer?.role === 'employee_admin') {
+            res.json([]);
+            return;
+          }
+        }
         messages = mapDocs(await db.collection('messages').find({ roomId }).sort({ createdAt: -1 }).limit(50).toArray());
       } else if (recipientId && userId) {
         messages = mapDocs(await db.collection('messages').find({
@@ -193,6 +200,14 @@ function createApp({ getDb, handle, fetchImpl = fetch, logError = console.error 
       const db = await getDb();
       const { content, authorId, isPrivate, recipientId, roomId } = req.body;
       const messageId = randomUUID();
+
+      if (roomId === 'group') {
+        const author = await db.collection('users').findOne({ _id: authorId });
+        if (author?.role === 'employee_admin') {
+          res.status(403).json({ error: 'Admin users cannot access group chat' });
+          return;
+        }
+      }
 
       await db.collection('messages').insertOne({
         _id: messageId,

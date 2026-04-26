@@ -33,12 +33,17 @@ export default function Home() {
     if (!currentUser) return;
 
     const fetchContextData = async () => {
+      const isStaffAdmin = currentUser?.role === 'employee_admin';
+      const messagesPromise = isStaffAdmin
+        ? Promise.resolve([])
+        : fetch(`/api/messages?roomId=group&userId=${currentUser.id}`).then(r => r.json()).catch(() => []);
+
       const [unreadRes, proposalsRes, notifRes, allVotesRes, messagesRes] = await Promise.all([
         fetch(`/api/notifications?userId=${currentUser.id}&unreadOnly=true`).then(r => r.json()).catch(() => ({})),
         fetch(`/api/proposals?status=active`).then(r => r.json()).catch(() => []),
         fetch(`/api/notifications?userId=${currentUser.id}`).then(r => r.json()).catch(() => ({})),
         fetch(`/api/votes?all=true`).then(r => r.json()).catch(() => []),
-        fetch(`/api/messages?roomId=group`).then(r => r.json()).catch(() => []),
+        messagesPromise,
       ]);
       setUnreadCount(unreadRes.unreadCount || 0);
       // Attach votes (with comments) to each proposal

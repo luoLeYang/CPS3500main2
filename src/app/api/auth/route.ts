@@ -6,21 +6,97 @@ import { randomUUID } from 'crypto';
 const SECURITY_QUESTION = '统一密保问题：请输入密保答案';
 const SECURITY_ANSWER = '123';
 
+function generateInviteCode() {
+  return Math.random().toString(36).slice(2, 8).toLowerCase();
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const { email, password, name, action, username, securityAnswer, newPassword, confirmNewPassword } = await request.json();
+    const {
+      email,
+      password,
+      name,
+      action,
+      username,
+      securityAnswer,
+      newPassword,
+      confirmNewPassword,
+      inviteCode,
+      noInviteCode,
+    } = await request.json();
     const db = await getDb();
 
     if (action === 'signup') {
+      if (!name || !email || !password) {
+        return NextResponse.json({ error: 'Missing required signup fields' }, { status: 400 });
+      }
+
       // Check if user exists
       const existingUser = await db.collection('users').findOne({ email });
       if (existingUser) {
         return NextResponse.json({ error: 'User already exists' }, { status: 400 });
       }
 
+      const normalizedInvite = String(inviteCode || '').trim().toLowerCase();
+
+      if (!noInviteCode && !normalizedInvite) {
+        return NextResponse.json({ error: 'Invite code is required, or check "not have" to create a new dorm' }, { status: 400 });
+      }
+
+      let dormId = '';
+      let assignedInviteCode = '';
+      let createdDormInviteCode: string | null = null;
+
+      if (noInviteCode) {
+        dormId = randomUUID();
+        let candidate = generateInviteCode();
+        let exists = await db.collection('dorms').findOne({ inviteCode: candidate });
+        while (exists) {
+          candidate = generateInviteCode();
+          exists = await db.collection('dorms').findOne({ inviteCode: candidate });
+        }
+
+        assignedInviteCode = candidate;
+        createdDormInviteCode = candidate;
+
+        await db.collection('dorms').insertOne({
+          _id: dormId,
+          inviteCode: assignedInviteCode,
+          createdBy: name,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      } else {
+        let dorm = await db.collection('dorms').findOne({ inviteCode: normalizedInvite });
+
+        // Backward compatibility: existing seeded users may all be in dorm1 without a dorms collection record.
+        if (!dorm && normalizedInvite === 'dorm1') {
+          await db.collection('dorms').updateOne(
+            { _id: 'dorm1' },
+            {
+              $setOnInsert: {
+                inviteCode: 'dorm1',
+                createdBy: 'system',
+                createdAt: new Date(),
+              },
+              $set: { updatedAt: new Date() },
+            },
+            { upsert: true }
+          );
+          dorm = await db.collection('dorms').findOne({ _id: 'dorm1' });
+        }
+
+        if (!dorm) {
+          return NextResponse.json({ error: 'Invalid invite code' }, { status: 400 });
+        }
+
+        dormId = String(dorm._id);
+        assignedInviteCode = String((dorm as any).inviteCode || normalizedInvite);
+      }
+
       // Hash password
       const hashedPassword = await bcrypt.hash(password, 10);
-  const hashedSecurityAnswer = await bcrypt.hash(SECURITY_ANSWER, 10);
+      const hashedSecurityAnswer = await bcrypt.hash(SECURITY_ANSWER, 10);
       const userId = randomUUID();
 
       // Create user
@@ -31,7 +107,7 @@ export async function POST(request: NextRequest) {
         password: hashedPassword,
         avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`,
         role: 'resident',
-        dormId: 'dorm1',
+        dormId,
         securityQuestion: SECURITY_QUESTION,
         securityAnswer: hashedSecurityAnswer,
         createdAt: new Date(),
@@ -40,7 +116,7 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        user: { id: userId, name, email }
+        user: { id: userId, name, email, dormId, inviteCode: assignedInviteCode, createdDormInviteCode }
       });
     } else if (action === 'signin') {
       // Find user
@@ -57,7 +133,14 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        user: { id: String(user._id), name: user.name, email: user.email, avatar: user.avatar, role: user.role }
+        user: {
+          id: String(user._id),
+          name: user.name,
+          email: user.email,
+          avatar: user.avatar,
+          role: user.role,
+          dormId: user.dormId,
+        }
       });
     } else if (action === 'resetPassword') {
       if (!username || !securityAnswer || !newPassword || !confirmNewPassword) {

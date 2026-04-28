@@ -10,6 +10,7 @@ interface ChatPanelProps {
 export default function ChatPanel({ currentUser }: ChatPanelProps) {
   const [messages, setMessages] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
+  const [unreadPrivateMap, setUnreadPrivateMap] = useState<Record<string, number>>({});
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const isAdmin = currentUser?.role === 'employee_admin';
   const [isGroupChat, setIsGroupChat] = useState(!isAdmin);
@@ -24,6 +25,7 @@ export default function ChatPanel({ currentUser }: ChatPanelProps) {
 
   useEffect(() => {
     fetchUsers();
+    fetchUnreadPrivateSummary();
   }, []);
 
   useEffect(() => {
@@ -42,7 +44,10 @@ export default function ChatPanel({ currentUser }: ChatPanelProps) {
 
   // Polling interval (does NOT trigger scroll on its own)
   useEffect(() => {
-    const interval = setInterval(() => fetchMessages(), 3000);
+    const interval = setInterval(() => {
+      fetchMessages();
+      fetchUnreadPrivateSummary();
+    }, 3000);
     return () => clearInterval(interval);
   }, [isGroupChat, selectedUser]);
 
@@ -66,7 +71,7 @@ export default function ChatPanel({ currentUser }: ChatPanelProps) {
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch('/api/users');
+      const res = await fetch(`/api/users?viewerId=${currentUser.id}`);
       const data = await res.json();
       const filtered = (Array.isArray(data) ? data : []).filter((u: any) => {
         if (u.id === currentUser.id) return false;
@@ -106,8 +111,27 @@ export default function ChatPanel({ currentUser }: ChatPanelProps) {
       }
       // API already returns oldest -> newest.
       setMessages(Array.isArray(data) ? data : []);
+      if (!isGroupChat && selectedUser) {
+        fetchUnreadPrivateSummary();
+      }
     } catch (error) {
       console.error('Failed to fetch messages:', error);
+    }
+  };
+
+  const fetchUnreadPrivateSummary = async () => {
+    try {
+      const res = await fetch(`/api/messages?userId=${currentUser.id}&unreadSummary=private`);
+      const data = await res.json();
+      const nextMap: Record<string, number> = {};
+      (Array.isArray(data) ? data : []).forEach((row: any) => {
+        if (row?.authorId) {
+          nextMap[String(row.authorId)] = Number(row.count || 0);
+        }
+      });
+      setUnreadPrivateMap(nextMap);
+    } catch (error) {
+      console.error('Failed to fetch private unread summary:', error);
     }
   };
 
@@ -146,9 +170,9 @@ export default function ChatPanel({ currentUser }: ChatPanelProps) {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[600px]">
+    <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6 min-h-[520px] lg:h-[600px]">
       {/* Users Sidebar */}
-      <div className="lg:col-span-1 bg-white rounded-2xl shadow-lg p-4 overflow-y-auto">
+      <div className="lg:col-span-1 bg-white rounded-2xl shadow-lg p-3 sm:p-4 overflow-y-auto max-h-56 lg:max-h-none">
         {!isAdmin && (
           <div className="mb-4">
             <button
@@ -156,7 +180,7 @@ export default function ChatPanel({ currentUser }: ChatPanelProps) {
                 setIsGroupChat(true);
                 setSelectedUser(null);
               }}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition ${
+              className={`w-full flex items-center gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg transition text-sm sm:text-base ${
                 isGroupChat
                   ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -180,7 +204,7 @@ export default function ChatPanel({ currentUser }: ChatPanelProps) {
                   setSelectedUser(user);
                   setIsGroupChat(false);
                 }}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition text-left ${
+                className={`w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg transition text-left ${
                   selectedUser?.id === user.id && !isGroupChat
                     ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -191,7 +215,10 @@ export default function ChatPanel({ currentUser }: ChatPanelProps) {
                   alt={user.name}
                   className="w-8 h-8 rounded-full"
                 />
-                <span className="font-medium truncate">{user.name}</span>
+                <span className="font-medium truncate flex-1">{user.name}</span>
+                {unreadPrivateMap[user.id] > 0 && (
+                  <span className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0" title="New private messages" />
+                )}
               </button>
             ))}
           </div>
@@ -199,12 +226,12 @@ export default function ChatPanel({ currentUser }: ChatPanelProps) {
       </div>
 
       {/* Messages Area */}
-      <div className="lg:col-span-3 bg-white rounded-2xl shadow-lg flex flex-col overflow-hidden">
+      <div className="lg:col-span-3 bg-white rounded-2xl shadow-lg flex flex-col overflow-hidden min-h-[420px]">
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-6 py-4">
+        <div className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-4 sm:px-6 py-3 sm:py-4">
           <div className="flex items-center gap-3">
             <MessageCircle size={24} />
-            <h2 className="text-xl font-bold">
+            <h2 className="text-lg sm:text-xl font-bold truncate">
               {isGroupChat ? 'Group Chat' : selectedUser?.name || 'Select a user'}
             </h2>
           </div>
@@ -214,7 +241,7 @@ export default function ChatPanel({ currentUser }: ChatPanelProps) {
         <div
           ref={chatContainerRef}
           onScroll={handleScroll}
-          className="flex-1 overflow-y-auto px-6 py-4 space-y-4 bg-gray-50"
+          className="flex-1 overflow-y-auto px-3 sm:px-6 py-3 sm:py-4 space-y-3 sm:space-y-4 bg-gray-50"
         >
           {!isGroupChat && !selectedUser ? (
             <div className="flex items-center justify-center h-full text-gray-400">
@@ -231,7 +258,7 @@ export default function ChatPanel({ currentUser }: ChatPanelProps) {
                 className={`flex ${msg.authorId === currentUser.id ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`flex gap-3 max-w-xs ${
+                  className={`flex gap-2 sm:gap-3 max-w-[90%] sm:max-w-xs ${
                     msg.authorId === currentUser.id ? 'flex-row-reverse' : 'flex-row'
                   }`}
                 >
@@ -243,7 +270,7 @@ export default function ChatPanel({ currentUser }: ChatPanelProps) {
                   <div>
                     <p className={`text-xs text-gray-500 mb-1 ${msg.authorId === currentUser.id ? 'text-right' : ''}`}>{msg.name}</p>
                     <div
-                      className={`px-4 py-2 rounded-lg ${
+                      className={`px-3 sm:px-4 py-2 rounded-lg text-sm sm:text-base break-words ${
                         msg.authorId === currentUser.id
                           ? 'bg-purple-500 text-white'
                           : 'bg-gray-200 text-gray-800'
@@ -266,23 +293,23 @@ export default function ChatPanel({ currentUser }: ChatPanelProps) {
         </div>
 
         {/* Input */}
-        <form onSubmit={handleSendMessage} className="border-t-2 border-gray-200 px-6 py-4">
+        <form onSubmit={handleSendMessage} className="border-t-2 border-gray-200 px-3 sm:px-6 py-3 sm:py-4">
           <div className="flex gap-3">
             <input
               type="text"
               value={messageInput}
               onChange={(e) => setMessageInput(e.target.value)}
               placeholder={isGroupChat ? 'Type a message to everyone...' : selectedUser ? `Message ${selectedUser.name}...` : 'Select a user first'}
-              className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none"
+              className="flex-1 px-3 sm:px-4 py-2.5 sm:py-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none text-sm sm:text-base"
               disabled={!isGroupChat && !selectedUser}
             />
             <button
               type="submit"
               disabled={loading || !messageInput.trim() || (!isGroupChat && !selectedUser)}
-              className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-6 py-3 rounded-lg hover:shadow-lg transition disabled:opacity-50 flex items-center gap-2"
+              className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-3 sm:px-6 py-2.5 sm:py-3 rounded-lg hover:shadow-lg transition disabled:opacity-50 flex items-center gap-1 sm:gap-2 text-sm sm:text-base"
             >
               <Send size={18} />
-              Send
+              <span className="hidden sm:inline">Send</span>
             </button>
           </div>
         </form>

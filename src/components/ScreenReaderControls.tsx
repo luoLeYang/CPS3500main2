@@ -88,11 +88,11 @@ export default function ScreenReaderControls() {
 
   return (
     <div
-      className="screen-reader-controls flex items-center gap-2 bg-white bg-opacity-20 px-3 py-2 rounded-lg"
+      className="screen-reader-controls flex items-center gap-1 sm:gap-2 bg-white bg-opacity-20 px-2 sm:px-3 py-2 rounded-lg"
       role="group"
       aria-label="Screen read aloud controls"
     >
-      <Volume2 size={18} aria-hidden="true" />
+      <Volume2 size={16} aria-hidden="true" />
 
       <button
         onClick={startReading}
@@ -124,7 +124,7 @@ export default function ScreenReaderControls() {
         <Square size={16} aria-hidden="true" />
       </button>
 
-      <label htmlFor="speech-rate" className="sr-label text-xs">
+      <label htmlFor="speech-rate" className="sr-label hidden sm:inline text-xs">
         Speed
       </label>
       <select

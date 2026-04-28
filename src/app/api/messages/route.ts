@@ -9,7 +9,39 @@ export async function GET(request: NextRequest) {
     const viewerRole = url.searchParams.get('viewerRole');
     const recipientId = url.searchParams.get('recipientId');
     const userId = url.searchParams.get('userId');
+    const unreadSummary = url.searchParams.get('unreadSummary');
     const db = await getDb();
+
+    if (!userId) {
+      return NextResponse.json([]);
+    }
+
+    const viewer = await db.collection('users').findOne({ _id: userId });
+    const viewerDormId = (viewer as any)?.dormId;
+    if (!viewerDormId) {
+      return NextResponse.json([]);
+    }
+
+    if (unreadSummary === 'private') {
+      const unreadRows = await db.collection('messages').aggregate([
+        {
+          $match: {
+            dormId: viewerDormId,
+            isPrivate: true,
+            recipientId: userId,
+            isRead: false,
+          },
+        },
+        {
+          $group: {
+            _id: '$authorId',
+            count: { $sum: 1 },
+          },
+        },
+      ]).toArray();
+
+      return NextResponse.json(unreadRows.map((r: any) => ({ authorId: String(r._id), count: r.count })));
+    }
 
     let messages: any[] = [];
 
@@ -17,9 +49,26 @@ export async function GET(request: NextRequest) {
       if (roomId === 'group' && viewerRole === 'employee_admin') {
         return NextResponse.json([]);
       }
-      messages = mapDocs(await db.collection('messages').find({ roomId }).sort({ createdAt: -1 }).limit(50).toArray());
+      messages = mapDocs(await db.collection('messages').find({ roomId, dormId: viewerDormId }).sort({ createdAt: -1 }).limit(50).toArray());
     } else if (recipientId && userId) {
+      await db.collection('messages').updateMany(
+        {
+          dormId: viewerDormId,
+          isPrivate: true,
+          authorId: recipientId,
+          recipientId: userId,
+          isRead: false,
+        },
+        {
+          $set: {
+            isRead: true,
+            updatedAt: new Date(),
+          },
+        }
+      );
+
       messages = mapDocs(await db.collection('messages').find({
+        dormId: viewerDormId,
         $or: [
           { authorId: userId, recipientId, isPrivate: true },
           { authorId: recipientId, recipientId: userId, isPrivate: true },
@@ -45,11 +94,23 @@ export async function POST(request: NextRequest) {
     const { content, authorId, isPrivate, recipientId, roomId } = await request.json();
     const messageId = randomUUID();
     const db = await getDb();
+    const author = await db.collection('users').findOne({ _id: authorId });
+    const authorDormId = (author as any)?.dormId;
+
+    if (!authorDormId) {
+      return NextResponse.json({ error: 'Author dorm not found' }, { status: 400 });
+    }
 
     if (roomId === 'group') {
-      const author = await db.collection('users').findOne({ _id: authorId });
       if ((author as any)?.role === 'employee_admin') {
         return NextResponse.json({ error: 'Admin users cannot access group chat' }, { status: 403 });
+      }
+    }
+
+    if (isPrivate && recipientId) {
+      const recipient = await db.collection('users').findOne({ _id: recipientId });
+      if (!recipient || (recipient as any).dormId !== authorDormId) {
+        return NextResponse.json({ error: 'Recipient is not in your dorm' }, { status: 403 });
       }
     }
 
@@ -57,26 +118,36 @@ export async function POST(request: NextRequest) {
       _id: messageId,
       content,
       authorId,
+      dormId: authorDormId,
       isPrivate: !!isPrivate,
+      isRead: isPrivate ? false : true,
       recipientId: recipientId || null,
       roomId: roomId || null,
       createdAt: new Date(),
       updatedAt: new Date(),
     });
 
-    if (isPrivate && recipientId) {
+    if (roomId === 'group') {
       const sender = await db.collection('users').findOne({ _id: authorId });
-      await db.collection('notifications').insertOne({
-        _id: randomUUID(),
-        userId: recipientId,
-        type: 'message',
-        title: `New message from ${(sender as any)?.name || 'Unknown'}`,
-        content,
-        isRead: false,
-        relatedId: messageId,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
+      const recipients = await db.collection('users').find({
+        dormId: authorDormId,
+        _id: { $ne: authorId },
+        role: { $ne: 'employee_admin' },
+      }).toArray();
+
+      await Promise.all(recipients.map((user: any) =>
+        db.collection('notifications').insertOne({
+          _id: randomUUID(),
+          userId: String(user._id),
+          type: 'group_message',
+          title: `New group message from ${(sender as any)?.name || 'Unknown'}`,
+          content,
+          isRead: false,
+          relatedId: messageId,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+      ));
     }
 
     return NextResponse.json({ success: true, id: messageId });

@@ -65,8 +65,8 @@ export default function NotificationCenter({
   if (detailed) {
     // Detailed view for notifications tab
     return (
-      <div className="bg-white rounded-2xl shadow-lg p-6">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">All Notifications</h2>
+      <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4 sm:mb-6">All Notifications</h2>
 
         {notifications.length === 0 ? (
           <div className="text-center py-12 text-gray-500">
@@ -84,7 +84,7 @@ export default function NotificationCenter({
                     : 'bg-blue-50 border-blue-300'
                 }`}
               >
-                <div className="flex justify-between items-start mb-2">
+                <div className="flex justify-between items-start mb-2 gap-2">
                   <div className="flex-1">
                     <h4 className="font-semibold text-gray-800">
                       {notification.title}
@@ -133,7 +133,7 @@ export default function NotificationCenter({
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl z-50 max-h-96 overflow-y-auto">
+        <div className="absolute right-0 mt-2 w-[calc(100vw-1.5rem)] sm:w-80 max-w-80 bg-white rounded-2xl shadow-2xl z-50 max-h-96 overflow-y-auto">
           <div className="p-4 border-b-2 border-gray-200 flex justify-between items-center">
             <h3 className="font-bold text-gray-800">Notifications</h3>
             <button

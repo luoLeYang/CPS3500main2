@@ -15,8 +15,8 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
     try {
       setLoading(true);
       const [usersRes, proposalsRes] = await Promise.all([
-        fetch('/api/users').then((r) => r.json()).catch(() => []),
-        fetch('/api/proposals?status=approved').then((r) => r.json()).catch(() => []),
+        fetch(`/api/users?viewerId=${currentUser.id}`).then((r) => r.json()).catch(() => []),
+        fetch(`/api/proposals?status=approved&userId=${currentUser.id}`).then((r) => r.json()).catch(() => []),
       ]);
 
       const allUsers = Array.isArray(usersRes) ? usersRes : [];

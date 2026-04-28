@@ -6,9 +6,20 @@ export async function GET(request: NextRequest) {
   try {
     const url = new URL(request.url);
     const status = url.searchParams.get('status') || 'active';
+    const userId = url.searchParams.get('userId');
     const db = await getDb();
 
-    const proposals = mapDocs(await db.collection('proposals').find({ status }).sort({ createdAt: -1 }).toArray());
+    if (!userId) {
+      return NextResponse.json([]);
+    }
+
+    const user = await db.collection('users').findOne({ _id: userId });
+    const dormId = (user as any)?.dormId;
+    if (!dormId) {
+      return NextResponse.json([]);
+    }
+
+    const proposals = mapDocs(await db.collection('proposals').find({ status, dormId }).sort({ createdAt: -1 }).toArray());
     const proposalIds = proposals.map((p: any) => p.id);
     const initiatorIds = [...new Set(proposals.map((p: any) => p.initiatorId))];
 
@@ -44,6 +55,12 @@ export async function POST(request: NextRequest) {
     const { title, description, type, initiatorId, content } = await request.json();
     const proposalId = randomUUID();
     const db = await getDb();
+    const initiator = await db.collection('users').findOne({ _id: initiatorId });
+    const dormId = (initiator as any)?.dormId;
+
+    if (!dormId) {
+      return NextResponse.json({ error: 'Initiator dorm not found' }, { status: 400 });
+    }
 
     await db.collection('proposals').insertOne({
       _id: proposalId,
@@ -51,13 +68,14 @@ export async function POST(request: NextRequest) {
       description,
       type,
       initiatorId,
+      dormId,
       status: 'active',
       content: typeof content === 'string' ? content : JSON.stringify(content),
       createdAt: new Date(),
       updatedAt: new Date(),
     });
 
-    const otherUsers = await db.collection('users').find({ _id: { $ne: initiatorId } }).toArray();
+    const otherUsers = await db.collection('users').find({ _id: { $ne: initiatorId }, dormId }).toArray();
     await Promise.all(otherUsers.map((user: any) =>
       db.collection('notifications').insertOne({
         _id: randomUUID(),
@@ -94,7 +112,7 @@ export async function PUT(request: NextRequest) {
       { $set: { title, description, content: typeof content === 'string' ? content : JSON.stringify(content), updatedAt: new Date() } }
     );
 
-    const otherUsers = await db.collection('users').find({ _id: { $ne: (proposal as any).initiatorId } }).toArray();
+    const otherUsers = await db.collection('users').find({ _id: { $ne: (proposal as any).initiatorId }, dormId: (proposal as any).dormId }).toArray();
     await Promise.all(otherUsers.map((user: any) =>
       db.collection('notifications').insertOne({
         _id: randomUUID(),

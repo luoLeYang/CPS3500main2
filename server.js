@@ -9,11 +9,12 @@ const { connectDb, initializeDatabase } = require('./server/db');
 const { createApp } = require('./server/app');
 
 const dev = process.env.NODE_ENV !== 'production';
+const projectDir = __dirname;
 const hostname = '0.0.0.0';
 const port = Number(process.env.PORT || 3000);
 
 async function startServer() {
-  const nextApp = next({ dev, hostname, port });
+  const nextApp = next({ dev, dir: projectDir, hostname, port });
   const handle = nextApp.getRequestHandler();
 
   await initializeDatabase();

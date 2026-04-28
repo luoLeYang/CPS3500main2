@@ -7,12 +7,13 @@ export async function GET(request: NextRequest) {
     const userId = url.searchParams.get('userId');
     const unreadOnly = url.searchParams.get('unreadOnly') === 'true';
     const db = await getDb();
+    const allowedTypes = ['proposal', 'vote', 'group_message'];
 
-    const filter: Record<string, unknown> = { userId };
+    const filter: Record<string, unknown> = { userId, type: { $in: allowedTypes } };
     if (unreadOnly) filter.isRead = false;
 
     const notifications = await db.collection('notifications').find(filter).sort({ createdAt: -1 }).limit(50).toArray();
-    const unreadCount = await db.collection('notifications').countDocuments({ userId, isRead: false });
+    const unreadCount = await db.collection('notifications').countDocuments({ userId, isRead: false, type: { $in: allowedTypes } });
 
     return NextResponse.json({
       notifications: mapDocs(notifications),

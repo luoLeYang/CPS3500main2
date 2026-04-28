@@ -12,6 +12,8 @@ export default function LoginMenu({ onLoginSuccess }: LoginMenuProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
+  const [noInviteCode, setNoInviteCode] = useState(false);
   const [usernameForReset, setUsernameForReset] = useState('');
   const [securityAnswer, setSecurityAnswer] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -26,6 +28,12 @@ export default function LoginMenu({ onLoginSuccess }: LoginMenuProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (isSignup && !noInviteCode && !inviteCode.trim()) {
+      setError('Please enter an invite code, or check "I do not have an invite code".');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -36,6 +44,8 @@ export default function LoginMenu({ onLoginSuccess }: LoginMenuProps) {
           email,
           password,
           name: isSignup ? name : undefined,
+          inviteCode: isSignup ? inviteCode : undefined,
+          noInviteCode: isSignup ? noInviteCode : undefined,
           action: isSignup ? 'signup' : 'signin'
         })
       });
@@ -49,6 +59,11 @@ export default function LoginMenu({ onLoginSuccess }: LoginMenuProps) {
 
       // Save user to localStorage
       localStorage.setItem('currentUser', JSON.stringify(data.user));
+
+      if (isSignup && data.user?.createdDormInviteCode) {
+        alert(`New dorm created. Your invite code is: ${data.user.createdDormInviteCode}`);
+      }
+
       onLoginSuccess(data.user);
     } catch (err) {
       setError('An error occurred. Please try again.');
@@ -122,6 +137,48 @@ export default function LoginMenu({ onLoginSuccess }: LoginMenuProps) {
               ? 'Reset your password'
               : 'Sign in to your account'}
           </p>
+
+          <div className="mt-5 grid grid-cols-3 gap-2 bg-gray-100 p-1 rounded-xl">
+            <button
+              type="button"
+              onClick={() => {
+                setMode('signin');
+                setError('');
+                setSuccessMessage('');
+              }}
+              className={`px-2 py-2 text-sm rounded-lg transition font-semibold ${
+                mode === 'signin' ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              Sign In
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMode('signup');
+                setError('');
+                setSuccessMessage('');
+              }}
+              className={`px-2 py-2 text-sm rounded-lg transition font-semibold ${
+                mode === 'signup' ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              Sign Up
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMode('forgot');
+                setError('');
+                setSuccessMessage('');
+              }}
+              className={`px-2 py-2 text-sm rounded-lg transition font-semibold ${
+                mode === 'forgot' ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              Forgot
+            </button>
+          </div>
         </div>
 
         {/* Form */}
@@ -140,6 +197,35 @@ export default function LoginMenu({ onLoginSuccess }: LoginMenuProps) {
                 className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none transition"
                 required
               />
+
+              <div className="mt-4">
+                <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+                  <Lock size={18} />
+                  Dorm Invite Code
+                </label>
+                <input
+                  type="text"
+                  value={inviteCode}
+                  onChange={(e) => setInviteCode(e.target.value.toLowerCase())}
+                  placeholder="Enter invite code (e.g. dorm1)"
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none transition disabled:bg-gray-100"
+                  disabled={noInviteCode}
+                  required={!noInviteCode}
+                />
+
+                <label className="mt-3 inline-flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={noInviteCode}
+                    onChange={(e) => {
+                      setNoInviteCode(e.target.checked);
+                      if (e.target.checked) setInviteCode('');
+                    }}
+                    className="w-4 h-4"
+                  />
+                  I do not have an invite code (create a new dorm)
+                </label>
+              </div>
             </div>
           )}
 
@@ -264,19 +350,6 @@ export default function LoginMenu({ onLoginSuccess }: LoginMenuProps) {
 
         {/* Toggle */}
         <div className="text-center mt-6">
-          <p className="text-gray-600">
-            {isSignup ? 'Already have an account?' : "Don't have an account?"}
-            <button
-              onClick={() => {
-                setMode(isSignup ? 'signin' : 'signup');
-                setError('');
-                setSuccessMessage('');
-              }}
-              className="ml-2 text-purple-600 font-semibold hover:underline"
-            >
-              {isSignup ? 'Sign In' : 'Sign Up'}
-            </button>
-          </p>
           <button
             onClick={() => {
               setMode(isForgotPassword ? 'signin' : 'forgot');

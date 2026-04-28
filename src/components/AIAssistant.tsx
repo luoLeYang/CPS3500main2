@@ -90,19 +90,11 @@ export default function AIAssistant({ screenContext }: AIAssistantProps) {
   }
 
   return (
-    <div
-      className="fixed z-[70] flex flex-col items-end gap-3"
-      style={{
-        right: 'max(0.75rem, env(safe-area-inset-right))',
-        bottom: 'max(0.75rem, env(safe-area-inset-bottom))'
-      }}
-    >
+    <div className="fixed bottom-4 right-3 sm:bottom-6 sm:right-6 z-50 flex flex-col items-end gap-3">
       {/* Chat panel */}
       {open && (
-        <div
-          className="w-[calc(100vw-1.25rem)] max-w-sm sm:w-96 bg-white rounded-2xl shadow-2xl border border-amber-200 flex flex-col overflow-hidden"
-          style={{ height: 'min(70vh, 480px)' }}
-        >
+        <div className="w-[min(24rem,calc(100vw-1.5rem))] sm:w-96 bg-white rounded-2xl shadow-2xl border border-amber-200 flex flex-col overflow-hidden"
+          style={{ height: '480px' }}>
           {/* Header */}
           <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-3 flex items-center justify-between">
             <div>

@@ -21,6 +21,7 @@ export default function ProposalPanel({ currentUser }: ProposalPanelProps) {
   const [showVoteForm, setShowVoteForm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [votes, setVotes] = useState<any[]>([]);
+  const [customType, setCustomType] = useState('');
 
   const [formData, setFormData] = useState({
     title: '',
@@ -54,7 +55,7 @@ export default function ProposalPanel({ currentUser }: ProposalPanelProps) {
 
   const fetchProposals = async () => {
     try {
-      const res = await fetch('/api/proposals?status=active');
+      const res = await fetch(`/api/proposals?status=active&userId=${currentUser.id}`);
       const data = await res.json();
       setProposals(data);
     } catch (error) {
@@ -64,7 +65,7 @@ export default function ProposalPanel({ currentUser }: ProposalPanelProps) {
 
   const fetchVotes = async (proposalId: string) => {
     try {
-      const res = await fetch(`/api/votes?proposalId=${proposalId}`);
+      const res = await fetch(`/api/votes?proposalId=${proposalId}&userId=${currentUser.id}`);
       const data = await res.json();
       setVotes(data);
     } catch (error) {
@@ -74,6 +75,8 @@ export default function ProposalPanel({ currentUser }: ProposalPanelProps) {
 
   const handleCreateProposal = async (e: React.FormEvent) => {
     e.preventDefault();
+    const finalType = formData.type === 'custom' ? customType.trim() : formData.type;
+    if (!finalType) return;
     setLoading(true);
 
     try {
@@ -82,12 +85,14 @@ export default function ProposalPanel({ currentUser }: ProposalPanelProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
+          type: finalType,
           initiatorId: currentUser.id
         })
       });
 
       if (response.ok) {
         setFormData({ title: '', description: '', type: 'cleaning', content: {} });
+        setCustomType('');
         setShowForm(false);
         fetchProposals();
       }
@@ -155,18 +160,22 @@ export default function ProposalPanel({ currentUser }: ProposalPanelProps) {
   };
 
   const getTypeInfo = (typeId: string) => {
-    return PROPOSAL_TYPES.find(t => t.id === typeId);
+    return PROPOSAL_TYPES.find(t => t.id === typeId) || {
+      id: typeId,
+      label: typeId,
+      icon: '✨',
+    };
   };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Proposals List */}
       <div className="lg:col-span-2 space-y-4">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-800">Active Proposals</h2>
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4 sm:mb-6">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Active Proposals</h2>
           <button
             onClick={() => setShowForm(true)}
-            className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-6 py-3 rounded-lg hover:shadow-lg transition flex items-center gap-2"
+            className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg hover:shadow-lg transition flex items-center justify-center gap-2 text-sm sm:text-base"
           >
             <Plus size={20} />
             New Proposal
@@ -182,45 +191,45 @@ export default function ProposalPanel({ currentUser }: ProposalPanelProps) {
             <div
               key={proposal.id}
               onClick={() => setSelectedProposal(proposal)}
-              className={`bg-white rounded-2xl shadow-lg p-6 cursor-pointer transition hover:shadow-xl ${
+              className={`bg-white rounded-2xl shadow-lg p-4 sm:p-6 cursor-pointer transition hover:shadow-xl ${
                 selectedProposal?.id === proposal.id ? 'ring-2 ring-purple-500' : ''
               }`}
             >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-purple-400 flex items-center justify-center text-xl">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-blue-400 to-purple-400 flex items-center justify-center text-lg sm:text-xl shrink-0">
                     {getTypeInfo(proposal.type)?.icon}
                   </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-gray-800">{proposal.title}</h3>
-                    <p className="text-sm text-gray-500">
+                  <div className="min-w-0">
+                    <h3 className="text-base sm:text-lg font-bold text-gray-800 truncate">{proposal.title}</h3>
+                    <p className="text-xs sm:text-sm text-gray-500 truncate">
                       By: {proposal.initiatorName}
                     </p>
                   </div>
                 </div>
-                <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">
+                <span className="self-start px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">
                   {getTypeInfo(proposal.type)?.label}
                 </span>
               </div>
 
-              <p className="text-gray-600 mb-4">{proposal.description}</p>
+              <p className="text-sm sm:text-base text-gray-600 mb-4 break-words">{proposal.description}</p>
 
-              <div className="flex items-center justify-between text-sm">
-                <div className="flex gap-6">
-                  <div className="flex items-center gap-2 text-green-600">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-sm">
+                <div className="flex flex-wrap gap-3 sm:gap-6">
+                  <div className="flex items-center gap-1.5 sm:gap-2 text-green-600 text-xs sm:text-sm">
                     <ThumbsUp size={16} />
                     <span>Approve: {proposal.approveCount || 0}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-red-600">
+                  <div className="flex items-center gap-1.5 sm:gap-2 text-red-600 text-xs sm:text-sm">
                     <ThumbsDown size={16} />
                     <span>Reject: {proposal.rejectCount || 0}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-yellow-600">
+                  <div className="flex items-center gap-1.5 sm:gap-2 text-yellow-600 text-xs sm:text-sm">
                     <MessageSquare size={16} />
                     <span>Modify: {proposal.modifyCount || 0}</span>
                   </div>
                 </div>
-                <span className="text-gray-500">
+                <span className="text-gray-500 text-xs sm:text-sm">
                   {new Date(proposal.createdAt).toLocaleDateString('en-US')}
                 </span>
               </div>
@@ -232,7 +241,7 @@ export default function ProposalPanel({ currentUser }: ProposalPanelProps) {
       {/* Details Panel */}
       <div className="lg:col-span-1">
         {selectedProposal ? (
-          <div className="bg-white rounded-2xl shadow-lg p-6 sticky top-32">
+          <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 lg:sticky lg:top-32">
             <h3 className="text-xl font-bold text-gray-800 mb-4">Proposal Details</h3>
 
             <div className="space-y-4 mb-6">
@@ -318,7 +327,7 @@ export default function ProposalPanel({ currentUser }: ProposalPanelProps) {
             )}
           </div>
         ) : (
-          <div className="bg-white rounded-2xl shadow-lg p-6 text-center text-gray-500">
+          <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 text-center text-gray-500 text-sm sm:text-base">
             Select a proposal to view details
           </div>
         )}
@@ -327,7 +336,7 @@ export default function ProposalPanel({ currentUser }: ProposalPanelProps) {
       {/* Create Proposal Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
+          <div className="bg-white rounded-2xl shadow-2xl p-5 sm:p-8 max-w-md w-full max-h-[90vh] overflow-y-auto">
             <h3 className="text-2xl font-bold text-gray-800 mb-6">New Proposal</h3>
 
             <form onSubmit={handleCreateProposal} className="space-y-4">
@@ -345,7 +354,19 @@ export default function ProposalPanel({ currentUser }: ProposalPanelProps) {
                       {type.icon} {type.label}
                     </option>
                   ))}
+                  <option value="custom">✨ Custom</option>
                 </select>
+
+                {formData.type === 'custom' && (
+                  <input
+                    type="text"
+                    value={customType}
+                    onChange={(e) => setCustomType(e.target.value)}
+                    placeholder="Enter custom topic"
+                    className="mt-3 w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none"
+                    required
+                  />
+                )}
               </div>
 
               <div>
@@ -400,7 +421,7 @@ export default function ProposalPanel({ currentUser }: ProposalPanelProps) {
       {/* Edit Proposal Modal */}
       {showEditForm && selectedProposal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
+          <div className="bg-white rounded-2xl shadow-2xl p-5 sm:p-8 max-w-md w-full max-h-[90vh] overflow-y-auto">
             <h3 className="text-2xl font-bold text-gray-800 mb-6">Edit Proposal</h3>
             <p className="text-sm text-orange-600 mb-4 bg-orange-50 p-3 rounded-lg">
               Editing this proposal will retain existing votes, but all members will be re-notified.
@@ -459,7 +480,7 @@ export default function ProposalPanel({ currentUser }: ProposalPanelProps) {
       {/* Vote Modal */}
       {showVoteForm && selectedProposal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
+          <div className="bg-white rounded-2xl shadow-2xl p-5 sm:p-8 max-w-md w-full max-h-[90vh] overflow-y-auto">
             <h3 className="text-2xl font-bold text-gray-800 mb-6">Cast Your Vote</h3>
 
             <form onSubmit={handleVote} className="space-y-4">

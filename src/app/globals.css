@@ -18,6 +18,26 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
+/* Keep cursor behavior predictable across interactive UI. */
+button,
+a,
+[role='button'],
+summary,
+label[for],
+input[type='checkbox'],
+input[type='radio'] {
+  cursor: pointer;
+}
+
+input,
+textarea {
+  cursor: text;
+}
+
+select {
+  cursor: default;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
@@ -144,5 +164,13 @@ html.dark-mode ::-webkit-scrollbar-thumb {
 
 html.dark-mode ::-webkit-scrollbar-thumb:hover {
   background: #64748b;
+}
+
+@media (max-width: 768px) {
+  [role='tablist'] button {
+    padding: 0.55rem 0.45rem;
+    font-size: 0.78rem;
+    gap: 0.35rem;
+  }
 }
 

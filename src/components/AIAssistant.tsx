@@ -90,11 +90,19 @@ export default function AIAssistant({ screenContext }: AIAssistantProps) {
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
+    <div
+      className="fixed z-[70] flex flex-col items-end gap-3"
+      style={{
+        right: 'max(0.75rem, env(safe-area-inset-right))',
+        bottom: 'max(0.75rem, env(safe-area-inset-bottom))'
+      }}
+    >
       {/* Chat panel */}
       {open && (
-        <div className="w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-amber-200 flex flex-col overflow-hidden"
-          style={{ height: '480px' }}>
+        <div
+          className="w-[calc(100vw-1.25rem)] max-w-sm sm:w-96 bg-white rounded-2xl shadow-2xl border border-amber-200 flex flex-col overflow-hidden"
+          style={{ height: 'min(70vh, 480px)' }}
+        >
           {/* Header */}
           <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-3 flex items-center justify-between">
             <div>
@@ -176,7 +184,7 @@ export default function AIAssistant({ screenContext }: AIAssistantProps) {
       <button
         onClick={() => setOpen((v) => !v)}
         title="AI Assistant"
-        className="w-14 h-14 bg-gradient-to-br from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-full shadow-lg flex items-center justify-center text-2xl transition-all hover:scale-105 active:scale-95"
+        className="w-14 h-14 bg-gradient-to-br from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-full shadow-xl ring-2 ring-white/80 flex items-center justify-center text-2xl transition-all hover:scale-105 active:scale-95"
       >
         {open ? '×' : '🤖'}
       </button>

@@ -81,11 +81,24 @@ export default function Home() {
       {/* Header */}
       <header className="app-header bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-blue-900 shadow-lg sticky top-0 z-40">
         <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4 flex flex-col gap-3 lg:flex-row lg:justify-between lg:items-center">
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white text-purple-600 flex items-center justify-center font-bold shrink-0">
-              🏠
+          <div className="flex items-center justify-between gap-3 min-w-0">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white text-purple-600 flex items-center justify-center font-bold shrink-0">
+                🏠
+              </div>
+              <h1 className="text-lg sm:text-xl lg:text-2xl font-bold leading-tight truncate">Dorm Communication System</h1>
             </div>
-            <h1 className="text-lg sm:text-xl lg:text-2xl font-bold leading-tight">Dorm Communication System</h1>
+            <div className="flex items-center gap-2 sm:hidden shrink-0">
+              <NotificationCenter userId={currentUser.id} unreadCount={unreadCount} />
+              <button
+                onClick={handleLogout}
+                className="app-signout-btn bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg flex items-center transition"
+                title="Sign out"
+                aria-label="Sign out"
+              >
+                <LogOut size={18} />
+              </button>
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 lg:gap-4">
             <div className="user-pill flex items-center gap-2 sm:gap-3 bg-white bg-opacity-20 px-3 py-2 rounded-full max-w-full">
@@ -98,13 +111,15 @@ export default function Home() {
             </div>
             <ThemeToggle />
             <ScreenReaderControls />
-            <NotificationCenter userId={currentUser.id} unreadCount={unreadCount} />
+            <div className="hidden sm:block">
+              <NotificationCenter userId={currentUser.id} unreadCount={unreadCount} />
+            </div>
             <button
               onClick={handleLogout}
-              className="app-signout-btn bg-red-500 hover:bg-red-600 text-white px-3 sm:px-4 py-2 rounded-lg flex items-center gap-2 transition text-sm sm:text-base"
+              className="app-signout-btn bg-red-500 hover:bg-red-600 text-white px-3 sm:px-4 py-2 rounded-lg hidden sm:flex items-center gap-2 transition text-sm sm:text-base shrink-0"
             >
               <LogOut size={18} />
-              <span className="hidden sm:inline">Sign Out</span>
+              <span>Sign Out</span>
             </button>
           </div>
         </div>

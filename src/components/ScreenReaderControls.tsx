@@ -8,6 +8,7 @@ export default function ScreenReaderControls() {
   const [rate, setRate] = useState(1);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [statusText, setStatusText] = useState('Ready');
 
   const isSupported = useMemo(
     () => typeof window !== 'undefined' && 'speechSynthesis' in window,
@@ -33,20 +34,29 @@ export default function ScreenReaderControls() {
   };
 
   const startReading = () => {
-    if (!isSupported) return;
+    if (!isSupported) {
+      setStatusText('Speech not supported');
+      return;
+    }
 
     const synth = window.speechSynthesis;
 
     if (synth.speaking && synth.paused) {
       synth.resume();
       setIsPaused(false);
+      setStatusText('Reading');
       return;
     }
 
     synth.cancel();
 
     const text = getReadableText();
-    if (!text) return;
+    if (!text) {
+      setStatusText('Nothing to read');
+      return;
+    }
+
+    setStatusText('Starting...');
 
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.rate = rate;
@@ -55,16 +65,25 @@ export default function ScreenReaderControls() {
     utterance.onstart = () => {
       setIsSpeaking(true);
       setIsPaused(false);
+      setStatusText('Reading');
     };
-    utterance.onpause = () => setIsPaused(true);
-    utterance.onresume = () => setIsPaused(false);
+    utterance.onpause = () => {
+      setIsPaused(true);
+      setStatusText('Paused');
+    };
+    utterance.onresume = () => {
+      setIsPaused(false);
+      setStatusText('Reading');
+    };
     utterance.onend = () => {
       setIsSpeaking(false);
       setIsPaused(false);
+      setStatusText('Finished');
     };
     utterance.onerror = () => {
       setIsSpeaking(false);
       setIsPaused(false);
+      setStatusText('Unable to read');
     };
 
     utteranceRef.current = utterance;
@@ -76,6 +95,7 @@ export default function ScreenReaderControls() {
     if (!window.speechSynthesis.speaking) return;
     window.speechSynthesis.pause();
     setIsPaused(true);
+    setStatusText('Paused');
   };
 
   const stopReading = () => {
@@ -84,6 +104,7 @@ export default function ScreenReaderControls() {
     utteranceRef.current = null;
     setIsSpeaking(false);
     setIsPaused(false);
+    setStatusText('Stopped');
   };
 
   return (
@@ -96,7 +117,7 @@ export default function ScreenReaderControls() {
 
       <button
         onClick={startReading}
-        className="sr-btn bg-white text-purple-700 hover:bg-purple-100 px-2 py-1 rounded-md transition"
+        className={`sr-btn px-2 py-1 rounded-md transition ${isSpeaking && !isPaused ? 'bg-purple-600 text-white' : 'bg-white text-purple-700 hover:bg-purple-100'}`}
         aria-label={isPaused ? 'Resume reading' : 'Start reading'}
         title={isPaused ? 'Resume reading' : 'Start reading'}
         disabled={!isSupported}
@@ -106,7 +127,7 @@ export default function ScreenReaderControls() {
 
       <button
         onClick={pauseReading}
-        className="sr-btn bg-white text-purple-700 hover:bg-purple-100 px-2 py-1 rounded-md transition"
+        className={`sr-btn px-2 py-1 rounded-md transition ${isPaused ? 'bg-purple-600 text-white' : 'bg-white text-purple-700 hover:bg-purple-100'}`}
         aria-label="Pause reading"
         title="Pause reading"
         disabled={!isSupported || !isSpeaking || isPaused}
@@ -140,7 +161,11 @@ export default function ScreenReaderControls() {
         <option value={1.2}>1.2x</option>
       </select>
 
-      {!isSupported && <span className="text-xs text-red-100">Speech is not supported in this browser</span>}
+      <span className={`text-xs font-medium ${isSupported ? 'text-purple-800' : 'text-red-600'}`}>
+        {statusText}
+      </span>
+
+      {!isSupported && <span className="text-xs text-red-600">Speech is not supported in this browser</span>}
     </div>
   );
 }

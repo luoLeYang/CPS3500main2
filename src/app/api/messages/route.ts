@@ -125,10 +125,11 @@ export async function POST(request: NextRequest) {
       roomId: roomId || null,
       createdAt: new Date(),
       updatedAt: new Date(),
-    });
+    } as any);
+
+    const sender = await db.collection('users').findOne({ _id: authorId });
 
     if (roomId === 'group') {
-      const sender = await db.collection('users').findOne({ _id: authorId });
       const recipients = await db.collection('users').find({
         dormId: authorDormId,
         _id: { $ne: authorId },
@@ -146,8 +147,22 @@ export async function POST(request: NextRequest) {
           relatedId: messageId,
           createdAt: new Date(),
           updatedAt: new Date(),
-        })
+        } as any)
       ));
+    }
+
+    if (isPrivate && recipientId) {
+      await db.collection('notifications').insertOne({
+        _id: randomUUID(),
+        userId: recipientId,
+        type: 'message',
+        title: `New message from ${(sender as any)?.name || 'Unknown'}`,
+        content,
+        isRead: false,
+        relatedId: messageId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as any);
     }
 
     return NextResponse.json({ success: true, id: messageId });

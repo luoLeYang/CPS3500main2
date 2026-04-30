@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
         comment: comment || null,
         createdAt: new Date(),
         updatedAt: new Date(),
-      });
+      } as any);
     }
 
     if (proposal?.status === 'active') {
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
             relatedId: proposalId,
             createdAt: new Date(),
             updatedAt: new Date(),
-          })
+          } as any)
         ));
       }
     }
@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
         relatedId: proposalId,
         createdAt: new Date(),
         updatedAt: new Date(),
-      });
+      } as any);
     }
 
     return NextResponse.json({ success: true, id: voteId });

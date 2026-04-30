@@ -159,6 +159,36 @@ function createApp({ getDb, handle, fetchImpl = fetch, logError = console.error 
     }
   });
 
+  app.delete('/api/users', async (req, res) => {
+    try {
+      const db = await getDb();
+      const { userId } = req.body || {};
+
+      if (!userId) {
+        res.status(400).json({ error: 'userId is required' });
+        return;
+      }
+
+      const user = await db.collection('users').findOne({ _id: userId });
+      if (!user) {
+        res.status(404).json({ error: 'User not found' });
+        return;
+      }
+
+      await Promise.all([
+        db.collection('users').deleteOne({ _id: userId }),
+        db.collection('votes').deleteMany({ userId }),
+        db.collection('messages').deleteMany({ $or: [{ authorId: userId }, { recipientId: userId }] }),
+        db.collection('notifications').deleteMany({ userId }),
+        db.collection('proposals').deleteMany({ initiatorId: userId }),
+      ]);
+
+      res.json({ success: true });
+    } catch (error) {
+      sendError(res, error, 'User delete error:');
+    }
+  });
+
   app.get('/api/messages', async (req, res) => {
     try {
       const db = await getDb();

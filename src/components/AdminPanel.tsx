@@ -10,6 +10,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
   const [students, setStudents] = useState<any[]>([]);
   const [effectiveProposals, setEffectiveProposals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const fetchAdminData = async () => {
     try {
@@ -39,6 +40,30 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
     return () => clearInterval(interval);
   }, []);
 
+  const handleDeleteStudent = async (student: any) => {
+    const confirmed = window.confirm(`Delete student ${student.name}? This also removes their messages, votes, notifications, and proposals.`);
+    if (!confirmed) return;
+
+    try {
+      setDeletingId(student.id);
+      const res = await fetch('/api/users', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: student.id }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || 'Failed to delete student');
+        return;
+      }
+
+      setStudents((prev) => prev.filter((s) => s.id !== student.id));
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   if (loading) {
     return <div className="bg-white rounded-2xl shadow-lg p-6">Loading admin data...</div>;
   }
@@ -54,10 +79,18 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
             {students.map((student) => (
               <div key={student.id} className="border border-gray-200 rounded-lg p-3 flex items-center gap-3">
                 <img src={student.avatar} alt={student.name} className="w-10 h-10 rounded-full" />
-                <div>
+                <div className="flex-1 min-w-0">
                   <p className="font-semibold text-gray-800">{student.name}</p>
                   <p className="text-sm text-gray-600">{student.email}</p>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteStudent(student)}
+                  disabled={deletingId === student.id}
+                  className="px-3 py-2 rounded-lg bg-red-500 text-white text-sm font-semibold hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {deletingId === student.id ? 'Deleting...' : 'Delete'}
+                </button>
               </div>
             ))}
           </div>

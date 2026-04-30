@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
       content: typeof content === 'string' ? content : JSON.stringify(content),
       createdAt: new Date(),
       updatedAt: new Date(),
-    });
+    } as any);
 
     const otherUsers = await db.collection('users').find({ _id: { $ne: initiatorId }, dormId }).toArray();
     await Promise.all(otherUsers.map((user: any) =>
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
         relatedId: proposalId,
         createdAt: new Date(),
         updatedAt: new Date(),
-      })
+      } as any)
     ));
 
     return NextResponse.json({ success: true, id: proposalId });
@@ -124,7 +124,7 @@ export async function PUT(request: NextRequest) {
         relatedId: proposalId,
         createdAt: new Date(),
         updatedAt: new Date(),
-      })
+      } as any)
     ));
 
     return NextResponse.json({ success: true });

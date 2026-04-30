@@ -274,6 +274,34 @@ export default function ProposalPanel({ currentUser }: ProposalPanelProps) {
               </div>
             </div>
 
+            {/* 管理员直接批准按钮 */}
+            {currentUser.role === 'employee_admin' && selectedProposal.status !== 'approved' && (
+              <button
+                className="w-full mb-4 bg-gradient-to-r from-green-500 to-blue-500 text-white py-2 rounded-lg font-semibold hover:shadow-lg transition"
+                disabled={loading}
+                onClick={async () => {
+                  setLoading(true);
+                  try {
+                    const res = await fetch('/api/proposals', {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ proposalId: selectedProposal.id, action: 'approve', userId: currentUser.id })
+                    });
+                    if (res.ok) {
+                      fetchProposals();
+                      setSelectedProposal({ ...selectedProposal, status: 'approved' });
+                    }
+                  } catch (e) {
+                    // 可加错误提示
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+              >
+                {loading ? 'Approving...' : 'Approve Directly (Admin)'}
+              </button>
+            )}
+
             {/* Vote history */}
             {votes.length > 0 && (
               <div className="mb-6">

@@ -99,11 +99,29 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const { proposalId, title, description, content } = await request.json();
+    const { proposalId, title, description, content, action, userId } = await request.json();
     const db = await getDb();
-
     const proposal = await db.collection('proposals').findOne({ _id: proposalId });
-    if (!proposal || proposal.status !== 'active') {
+    if (!proposal) {
+      return NextResponse.json({ error: 'Proposal not found' }, { status: 404 });
+    }
+
+    // 管理员直接批准
+    if (action === 'approve' && userId) {
+      // 检查 userId 是否为管理员
+      const user = await db.collection('users').findOne({ _id: userId });
+      if (!user || user.role !== 'employee_admin') {
+        return NextResponse.json({ error: 'Not authorized' }, { status: 403 });
+      }
+      await db.collection('proposals').updateOne(
+        { _id: proposalId },
+        { $set: { status: 'approved', updatedAt: new Date() } }
+      );
+      return NextResponse.json({ success: true });
+    }
+
+    // 普通修改
+    if (proposal.status !== 'active') {
       return NextResponse.json({ error: 'Proposal cannot be modified' }, { status: 400 });
     }
 

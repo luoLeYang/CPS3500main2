@@ -38,15 +38,16 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'userId is required' }, { status: 400 });
     }
 
+
     const db = await getDb();
-    const user = await db.collection('users').findOne({ uuid: userId });
+    const user = await db.collection('users').findOne({ _id: userId });
 
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     await Promise.all([
-      db.collection('users').deleteOne({ uuid: userId }),
+      db.collection('users').deleteOne({ _id: userId }),
       db.collection('votes').deleteMany({ userId }),
       db.collection('messages').deleteMany({ $or: [{ authorId: userId }, { recipientId: userId }] }),
       db.collection('notifications').deleteMany({ userId }),

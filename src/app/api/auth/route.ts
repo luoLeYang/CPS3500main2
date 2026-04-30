@@ -98,8 +98,8 @@ export async function POST(request: NextRequest) {
       const userId = randomUUID();
 
       // 修复核心点：移除 _id 赋值，改用 uuid 字段
-      await db.collection('users').insertOne({
-        uuid: userId, // 存储你的 UUID
+          await db.collection('users').insertOne({
+            uuid: userId, // 存储你的 UUID
         name,
         email,
         password: hashedPassword,

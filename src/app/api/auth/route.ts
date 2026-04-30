@@ -12,7 +12,6 @@ function generateInviteCode() {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
     const {
       email,
       password,
@@ -24,23 +23,25 @@ export async function POST(request: NextRequest) {
       confirmNewPassword,
       inviteCode,
       noInviteCode,
-    } = body;
-    
+    } = await request.json();
+
     const db = await getDb();
+    const dorms = db.collection('dorms');
+    const users = db.collection('users');
 
     if (action === 'signup') {
       if (!name || !email || !password) {
         return NextResponse.json({ error: 'Missing required signup fields' }, { status: 400 });
       }
 
-      const existingUser = await db.collection('users').findOne({ email });
+      const existingUser = await users.findOne({ email });
       if (existingUser) {
         return NextResponse.json({ error: 'User already exists' }, { status: 400 });
       }
 
       const normalizedInvite = String(inviteCode || '').trim().toLowerCase();
       if (!noInviteCode && !normalizedInvite) {
-        return NextResponse.json({ error: 'Invite code is required' }, { status: 400 });
+        return NextResponse.json({ error: 'Invite code is required, or check "not have" to create a new dorm' }, { status: 400 });
       }
 
       let dormId = '';
@@ -48,31 +49,30 @@ export async function POST(request: NextRequest) {
       let createdDormInviteCode: string | null = null;
 
       if (noInviteCode) {
-        dormId = randomUUID(); // 这里作为业务逻辑上的 ID
+        dormId = randomUUID();
         let candidate = generateInviteCode();
-        let exists = await db.collection('dorms').findOne({ inviteCode: candidate });
+        let exists = await dorms.findOne({ inviteCode: candidate });
         while (exists) {
           candidate = generateInviteCode();
-          exists = await db.collection('dorms').findOne({ inviteCode: candidate });
+          exists = await dorms.findOne({ inviteCode: candidate });
         }
 
         assignedInviteCode = candidate;
         createdDormInviteCode = candidate;
 
-        // 修复点：让 MongoDB 自动生成 _id，手动指定业务 ID 字段
-        await db.collection('dorms').insertOne({
-          dormUuid: dormId, // 使用业务字段名，避免覆盖 _id
+        await dorms.insertOne({
+          _id: dormId,
           inviteCode: assignedInviteCode,
           createdBy: name,
           createdAt: new Date(),
           updatedAt: new Date(),
         });
       } else {
-        let dorm = await db.collection('dorms').findOne({ inviteCode: normalizedInvite });
+        let dorm = await dorms.findOne({ inviteCode: normalizedInvite });
+
         if (!dorm && normalizedInvite === 'dorm1') {
-          // 这里的 _id 使用了字符串 'dorm1'，如果报错，请确保 db 类型定义支持 string _id
-          await db.collection('dorms').updateOne(
-            { _id: 'dorm1' as any }, 
+          await dorms.updateOne(
+            { _id: 'dorm1' },
             {
               $setOnInsert: {
                 inviteCode: 'dorm1',
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
             },
             { upsert: true }
           );
-          dorm = await db.collection('dorms').findOne({ _id: 'dorm1' as any });
+          dorm = await dorms.findOne({ _id: 'dorm1' });
         }
 
         if (!dorm) {
@@ -97,13 +97,12 @@ export async function POST(request: NextRequest) {
       const hashedSecurityAnswer = await bcrypt.hash(SECURITY_ANSWER, 10);
       const userId = randomUUID();
 
-      // 修复核心点：移除 _id 赋值，改用 uuid 字段
-          await db.collection('users').insertOne({
-            uuid: userId, // 存储你的 UUID
+      await users.insertOne({
+        _id: userId,
         name,
         email,
         password: hashedPassword,
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`,
+        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`,
         role: 'resident',
         dormId,
         securityQuestion: SECURITY_QUESTION,
@@ -116,18 +115,21 @@ export async function POST(request: NextRequest) {
         success: true,
         user: { id: userId, name, email, dormId, inviteCode: assignedInviteCode, createdDormInviteCode }
       });
-
     } else if (action === 'signin') {
-      const user = await db.collection('users').findOne({ email });
-      if (!user) return NextResponse.json({ error: 'User not found' }, { status: 401 });
+      const user = await users.findOne({ email });
+      if (!user) {
+        return NextResponse.json({ error: 'User not found' }, { status: 401 });
+      }
 
       const isValid = await bcrypt.compare(password, user.password as string);
-      if (!isValid) return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
+      if (!isValid) {
+        return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
+      }
 
       return NextResponse.json({
         success: true,
         user: {
-          id: String(user.uuid || user._id), // 优先返回你的业务 UUID
+          id: String(user._id),
           name: user.name,
           email: user.email,
           avatar: user.avatar,
@@ -135,8 +137,55 @@ export async function POST(request: NextRequest) {
           dormId: user.dormId,
         }
       });
+    } else if (action === 'resetPassword') {
+      if (!username || !securityAnswer || !newPassword || !confirmNewPassword) {
+        return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+      }
+
+      if (newPassword !== confirmNewPassword) {
+        return NextResponse.json({ error: 'New passwords do not match' }, { status: 400 });
+      }
+
+      const user = await users.findOne({
+        $or: [{ name: username }, { email: username }],
+      });
+
+      if (!user) {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      }
+
+      const savedAnswer = user.securityAnswer as string | undefined;
+      const isSecurityAnswerValid = savedAnswer
+        ? await bcrypt.compare(securityAnswer, savedAnswer)
+        : securityAnswer === SECURITY_ANSWER;
+
+      if (!isSecurityAnswerValid) {
+        return NextResponse.json({ error: 'Invalid security answer' }, { status: 401 });
+      }
+
+      const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+      const hashedSecurityAnswer = savedAnswer
+        ? savedAnswer
+        : await bcrypt.hash(SECURITY_ANSWER, 10);
+
+      await users.updateOne(
+        { _id: user._id },
+        {
+          $set: {
+            password: hashedNewPassword,
+            securityQuestion: SECURITY_QUESTION,
+            securityAnswer: hashedSecurityAnswer,
+            updatedAt: new Date(),
+          },
+        }
+      );
+
+      return NextResponse.json({
+        success: true,
+        message: 'Password reset successful',
+      });
     }
-    // ... resetPassword 逻辑保持一致，注意使用 (user._id as any) 绕过类型检查
+
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
   } catch (error) {
     console.error('Auth error:', error);

@@ -1,4 +1,4 @@
-import { MongoClient, Db } from 'mongodb';
+import { MongoClient, Db, Collection, Document } from 'mongodb';
 
 const uri = process.env.MONGODB_URI!;
 const dbName = process.env.MONGODB_DB || 'dormitory';
@@ -9,6 +9,10 @@ declare global {
 }
 
 let clientPromise: Promise<MongoClient>;
+
+type AnyDb = Omit<Db, 'collection'> & {
+  collection: <TSchema extends Document = any>(name: string) => Collection<TSchema>;
+};
 
 if (process.env.NODE_ENV === 'development') {
   if (!global._mongoClientPromise) {
@@ -21,9 +25,9 @@ if (process.env.NODE_ENV === 'development') {
   clientPromise = client.connect();
 }
 
-export async function getDb(): Promise<Db> {
+export async function getDb(): Promise<AnyDb> {
   const client = await clientPromise;
-  return client.db(dbName);
+  return client.db(dbName) as AnyDb;
 }
 
 export function mapDoc<T extends { _id?: unknown }>(doc: T | null): (Omit<T, '_id'> & { id: string }) | null {

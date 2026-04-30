@@ -317,6 +317,20 @@ function createApp({ getDb, handle, fetchImpl = fetch, logError = console.error 
         updatedAt: new Date(),
       });
 
+      if (isPrivate && recipientId) {
+        await db.collection('notifications').insertOne({
+          _id: randomUUID(),
+          userId: recipientId,
+          type: 'group_message',
+          title: `New message from ${author?.name || 'Unknown'}`,
+          content,
+          isRead: false,
+          relatedId: messageId,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }
+
       if (roomId === 'group') {
         const sender = await db.collection('users').findOne({ _id: authorId });
         const recipients = await db.collection('users').find({

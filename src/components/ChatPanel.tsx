@@ -74,18 +74,10 @@ export default function ChatPanel({ currentUser }: ChatPanelProps) {
       const res = await fetch(`/api/users?viewerId=${currentUser.id}`);
       const data = await res.json();
       const filtered = (Array.isArray(data) ? data : []).filter((u: any) => {
-        if (u.id === currentUser.id) return false;
-        if (isAdmin) return u.role === 'resident';
-        return u.role === 'resident' || u.role === 'employee_admin';
+        return u.id !== currentUser.id;
       });
 
       setUsers(filtered);
-
-      // Admin can only use private chat, so auto-select a student when possible.
-      if (isAdmin && !selectedUser && filtered.length > 0) {
-        setSelectedUser(filtered[0]);
-        setIsGroupChat(false);
-      }
     } catch (error) {
       console.error('Failed to fetch users:', error);
     }
